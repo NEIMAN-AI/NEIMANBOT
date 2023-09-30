@@ -1,0 +1,93 @@
+#!/bin/bsh
+
+_get_zlink () {
+    local regex
+    regex='(https?)://github.com/.+/.+'
+    if [[ $UPSTREAM_REPO == "pro" ]]
+    then
+        echo "aHR0cHM6Ly9naXRodWIuY29tL0F2aXNoZWtiaGF0dGFjaGFyamVlL0xFR0VOREJPVC9hcmNoaXZlL21haW4uemlw" | base64 -d
+    elif [[ $UPSTREAM_REPO == "update" ]]
+    then
+        echo "aHR0cHM6Ly9naXRodWIuY29tL0F2aXNoZWtiaGF0dGFjaGFyamVlL0xFR0VOREJPVC9hcmNoaXZlL21haW4uemlw" | base64 -d
+    elif [[ $UPSTREAM_REPO =~ $regex ]]
+    then
+        if [[ $UPSTREAM_REPO_BRANCH ]]
+        then
+            echo "${UPSTREAM_REPO}/archive/${UPSTREAM_REPO_BRANCH}.zip"
+        else
+            echo "${UPSTREAM_REPO}/archive/master.zip"
+        fi
+    else
+        echo "aHR0cHM6Ly9naXRodWIuY29tL0F2aXNoZWtiaGF0dGFjaGFyamVlL0xFR0VOREJPVC9hcmNoaXZlL21haW4uemlw" | base64 -d
+    fi
+}
+
+_get_repolink () {
+    local regex
+    local rlink
+    regex='(https?)://github.com/.+/.+'
+    if [[ $UPSTREAM_REPO == "pro" ]]
+    then
+        rlink=`echo "aHR0cHM6Ly9naXRodWIuY29tL1RlY29zeXMvTEVHRU5EQk9U" | base64 -d`
+    elif [[ $UPSTREAM_REPO == "update" ]]
+    then
+        rlink=`echo "aHR0cHM6Ly9naXRodWIuY29tL1RlY29zeXMvTEVHRU5EQk9U" | base64 -d`
+    elif [[ $UPSTREAM_REPO =~ $regex ]]
+    then
+        rlink=`echo "${UPSTREAM_REPO}"`
+    else
+        rlink=`echo "aHR0cHM6Ly9naXRodWIuY29tL1RlY29zeXMvTEVHRU5EQk9U" | base64 -d`
+    fi
+    echo "$rlink"
+}
+
+
+_run_python_code() {
+    python3${pVer%.*} -c "$1"
+}
+
+_run_neimanpackgit() {
+    $(_run_python_code 'from git import Repo
+import sys
+OFFICIAL_UPSTREAM_REPO = "https://github.com/NEIMAN-AI/NEIMANBOT"
+ACTIVE_BRANCH_NAME = "master"
+repo = Repo.init()
+origin = repo.create_remote("temponame", OFFICIAL_UPSTREAM_REPO)
+origin.fetch()
+repo.create_head(ACTIVE_BRANCH_NAME, origin.refs[ACTIVE_BRANCH_NAME])
+repo.heads[ACTIVE_BRANCH_NAME].checkout(True) ')
+}
+
+_run_legendgit() {
+    local repolink=$(_get_repolink)
+    $(_run_python_code 'from git import Repo
+import sys
+OFFICIAL_UPSTREAM_REPO="'$repolink'"
+ACTIVE_BRANCH_NAME = "'$UPSTREAM_REPO_BRANCH'" or "master"
+repo = Repo.init()
+origin = repo.create_remote("temponame", OFFICIAL_UPSTREAM_REPO)
+origin.fetch()
+repo.create_head(ACTIVE_BRANCH_NAME, origin.refs[ACTIVE_BRANCH_NAME])
+repo.heads[ACTIVE_BRANCH_NAME].checkout(True) ')
+}
+
+_start_bot () {
+    local zippath
+    zippath="NEIMANBOT.zip"
+    echo "   ↤↤↤↤↤ ∂σωиℓσα∂ιиg ѕσυя¢є ¢σ∂є ↦↦↦↦↦.."
+    wget -q $(_get_zlink) -O "$zippath"
+    echo "  ↫↫↫↫↫ υиρα¢кιиg ∂αтα ↬↬↬↬↬ ..."
+    NEIMANPATH=$(zipinfo -1 "$zippath" | grep -v "/.");
+    unzip -qq "$zippath"
+    echo "  ¢ℓєαиιиg ..."
+    rm -rf "$zippath"
+    _run_neimanpackgit
+    cd $NEIMANPATH
+    _run_neimangit
+    python3 ../setup/updater.py ../requirements.txt requirements.txt
+    chmod -R 755 bin
+    echo "    🅂🅃🄰🅁🅃🄸🄽🄶 🄽🄴🄸🄼🄰🄽🄱🄾🅃   "
+    python3 -m Neimanbot
+}
+
+_start_bot
